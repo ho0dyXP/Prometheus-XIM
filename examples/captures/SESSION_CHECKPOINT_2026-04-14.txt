@@ -1,0 +1,66 @@
+Prometheus-XIM Session Checkpoint
+Date: 2026-04-14
+Purpose: Fast recovery summary if chat history is unavailable.
+
+Project context
+- Reverse-engineering XIM MATRIX Manager BLE write semantics.
+- Hook path currently observes Manager app write bursts (BOUNDARY_TEST).
+- Runtime config activation often appears device-side in this path.
+
+Confirmed mappings (high confidence)
+1) ADS/Hip sensitivity
+- Fixed-point encoding: ui_value * 10 (uint16 LE) in mapped slots.
+- Bounds confirmed at 0.0 to 100.0 for mapped sensitivity axes.
+
+2) ADS delay split
+- Activate delay: metadata-family tail at 0x62/0x63 (uint16).
+- Deactivate delay: control-family 0x0C..0x0F (uint32).
+- Isolated 0->2->0 windows captured for both.
+
+3) Smart Actions scalar fields (subtype 0x05 authoring path)
+- Aim Angle slot: 0x1E/0x1F (uint16 LE)
+  Formula: encoded_angle = 50000 + angle_tenths
+  Semantics: circumferential degrees around full circle.
+  Anchors: 0.0->0xC350, 90.0->0xC6D4, 180.0->0xCA58, max-end->0xD15F.
+
+- Magnitude slot: 0x1E/0x1F (uint16 LE)
+  Formula: encoded_magnitude = 45000 + magnitude_tenths
+  Semantics: angular speed output (deg/s), UI max reported 3600 deg/s.
+  Anchors: 0.0->0xAFC8, 10.0->0xB02C, 185.0->0xB702.
+
+4) Config-switch Smart Action authoring
+- Saving switch SA repeatedly emits subtype 0x05 variable-length chunk bursts.
+- Chunk progression observed: 0x10 (record-style), then 0x11..0x15 (list-style).
+- Repeated-entry serialization observed in some runs.
+
+Runtime behavior findings
+- Controller-triggered and manual app-driven HUD config switches showed no BOUNDARY_TEST burst in this hook path.
+- Strong working conclusion for this interception path:
+  runtime config activation is device-side/outside this app write hook.
+
+- Navigation-mode path (D-pad Left + B, then Select) can show half-restart behavior:
+  authentication controller power drops briefly and re-enumerates/vibrates.
+
+- Runtime switch suppression/nuance:
+  - Switch does not execute while Smart Action editor is open.
+  - Auto-switch on HUD entry can occur when prior switch SA state persists.
+  - Control run (delete old SA, recreate from clean baseline) returned to HUD without auto-switch.
+
+Recommended immediate next step
+1) Keep clean baseline.
+2) Perform one HUD trigger attempt.
+3) If still no write burst, stop runtime-hook attempts and continue only subtype 0x05 authoring diffs.
+
+Where detailed evidence lives
+- examples/captures/2026-04-14_session-hip-sensitivity.md
+- reference/MAPPING_CHECKLIST.yaml
+
+Resume protocol (quick)
+- Use marker pattern per action window:
+  .echo [ID] baseline
+  g
+  (one change)
+  .echo [ID] action: <exact change>
+  g
+- Keep one variable change per window.
+- Save after each intentional authoring diff.

@@ -1,0 +1,88 @@
+MIT License
+
+Copyright (c) 2026 Prometheus-XIM Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ADDITIONAL TERMS & DISCLAIMERS:
+
+EDUCATIONAL & RESEARCH USE:
+This project is provided for educational and reverse-engineering research 
+purposes in the interest of the gaming community. The methodology used is 
+black-box protocol analysis via packet capture, a standard research practice.
+
+COMPLIANCE RESPONSIBILITY:
+By using this project, you agree to:
+
+1. PLATFORM COMPLIANCE
+   - Ensure your use complies with Xbox, PlayStation, PC manufacturer ToS
+   - XIM MATRIX is officially supported on these platforms
+   - Do not use this in circumvention of platform restrictions
+
+2. GAME COMPLIANCE
+   - Respect game publisher terms of service
+   - Do not use for cheating, unfair advantage, or violation of game rules
+   - Gaming organizations may have specific esports rules about input devices
+
+3. LOCAL LAWS
+   - Comply with all applicable laws in your jurisdiction
+   - Device modification and reverse-engineering legality varies by region
+   - Consult local counsel if uncertain
+
+4. NO CIRCUMVENTION
+   - Do not use this project to bypass security measures, authentication, or 
+     copy protection mechanisms
+   - This project analyzes only the public-facing device protocol
+   - We do not circumvent, break, or disable protections
+
+NO WARRANTY:
+THIS SOFTWARE IS PROVIDED "AS-IS" WITHOUT ANY WARRANTY OR GUARANTEE.
+USE AT YOUR OWN RISK. THE AUTHORS AND CONTRIBUTORS ASSUME NO RESPONSIBILITY FOR:
+
+- Device damage or malfunction
+- Game account suspension or bans
+- Loss of competitive standing or achievements
+- Hardware compatibility issues
+- Data loss or corruption
+- Any other harm resulting from use of this software
+
+LIABILITY LIMITATION:
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DAMAGES, WHETHER DIRECT, 
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING 
+FROM YOUR USE OR INABILITY TO USE THE SOFTWARE.
+
+RESPONSIBLE DISCLOSURE:
+If you discover security vulnerabilities in XIM MATRIX or this project:
+- Report privately to maintainers (do not disclose publicly)
+- Allow reasonable time for response before public disclosure
+- Community security benefits from responsible handling
+
+ATTRIBUTION:
+If you use this software in research or publication:
+- Cite the Prometheus-XIM project
+- Link to the repository
+- Credit contributors for specific findings
+- Include a copy of this license
+
+═══════════════════════════════════════════════════════════════════════════════
+
+This is a community research project dedicated to legitimate gaming optimization
+and device protocol understanding. Use responsibly.

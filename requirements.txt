@@ -1,0 +1,16 @@
+# Prometheus-XIM Dependencies
+# Python 3.8+
+
+# Core Dependencies
+pyyaml>=6.0            # YAML parsing for protocol reference
+pywin32>=300           # Windows API access
+winrt>=1.0.21          # Windows Runtime (Bluetooth LE)
+
+# Optional - Development/Testing
+# pytest>=6.0          # Test framework (future)
+# black>=21.0          # Code formatting (recommended)
+# pylint>=2.0          # Code linting (recommended)
+
+# Optional - WinRT Dependencies (Windows 10/11 only)
+# windows-sdk          # Windows SDK for advanced Bluetooth APIs
+# pywinpty>=0.5        # Windows PTY support (if using terminal)

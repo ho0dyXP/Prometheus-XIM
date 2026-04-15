@@ -1,0 +1,101 @@
+# WinDbg Output-Mode Filter Commands (Prometheus-XIM)
+# Use these when normal breakpoints are too noisy and you only want
+# specific controller output transitions.
+
+# =============================================================================
+# WHY THESE FILTERS WERE USED
+# =============================================================================
+# Reason 1: WriteValueInternal is hit by many BLE writes, not only CFG1D settings.
+# Reason 2: We needed only type=0x15, subtype=0x1D, length=0x64 payloads.
+# Reason 3: To verify output mapping quickly, we filtered by mode byte @ +0x5E.
+# Reason 4: This avoids drowning in unrelated packets while toggling UI settings.
+
+# =============================================================================
+# BASE SETUP
+# =============================================================================
+.symfix
+.sympath+ srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+.reload /f
+bu Windows_Devices_Bluetooth!GattCharacteristic::WriteValueInternal
+bc *
+
+# Optional logging
+.logopen /t c:\tmp\Prometheus-XIM\examples\captures\raw\windbg_mode_filters.log
+
+# =============================================================================
+# PACKET SHAPE FILTER (CFG1D only)
+# =============================================================================
+# Break only when:
+#  - len == 0x64
+#  - payload[0] == 0x15
+#  - payload[1] == 0x1D
+
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .echo [CFG1D]; .printf \"mode=%02x rate=%02x comp=%02x\\n\", by(poi(@rdx+0x50)+0x5E), by(poi(@rdx+0x50)+0x5F), by(poi(@rdx+0x50)+0x6D); db poi(@rdx+0x50) L64; } } }; gc"
+
+# Variant for builds/flows that emit subtype 0x00 instead of 0x1D (parser-safe nesting)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .echo [CFG1D_VARIANT]; .printf \"subtype=%02x\\n\", by(poi(@rdx+0x50)+0x1); db poi(@rdx+0x50) L64; } .else { .if (by(poi(@rdx+0x50)+0x1)==0x00) { .echo [CFG1D_VARIANT]; .printf \"subtype=%02x\\n\", by(poi(@rdx+0x50)+0x1); db poi(@rdx+0x50) L64; } } } }; gc"
+
+# =============================================================================
+# MODE-SPECIFIC FILTERS (set one at a time)
+# =============================================================================
+# Important: Clear old breakpoints first so filters do not overlap.
+# bc *
+
+# Xbox/PC mode (mode byte 0x01)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x01) { .echo [MODE XBOX]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# PS5 mode (mode byte 0x02)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x02) { .echo [MODE PS5]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# XInput mode (mode byte 0x03)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x03) { .echo [MODE XINPUT]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# Mouse+Keyboard mode (mode byte 0x04)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x04) { .echo [MODE MNK]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# Hybrid mode (mode byte 0x05)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x05) { .echo [MODE HYBRID]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# =============================================================================
+# RATE-SPECIFIC FILTERS (optional)
+# =============================================================================
+# Standard rate (0x5F == 0x00)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x00) { .echo [RATE STANDARD]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 250Hz (0x5F == 0x01)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x01) { .echo [RATE 250]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 500Hz (0x5F == 0x02)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x02) { .echo [RATE 500]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 1000Hz (0x5F == 0x03)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x03) { .echo [RATE 1000]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# =============================================================================
+# COMPANION CODE CHECKS (optional)
+# =============================================================================
+# These were used to verify mode/rate/companion atomic consistency.
+# Example: break if mode/rate implies standard but companion is unexpected.
+
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x00) { .if (by(poi(@rdx+0x50)+0x6D)==0x00) { .echo [SUSPICIOUS COMPANION STANDARD]; db poi(@rdx+0x50) L64; } } } } }; gc"
+
+# =============================================================================
+# SESSION CONTROL
+# =============================================================================
+# Show breakpoints
+bl
+
+# Export recreate commands for notes
+.bpcmds
+
+# Clear breakpoints
+bc *
+
+# End logging
+.logclose
+
+
+
+
+
+

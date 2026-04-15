@@ -1,0 +1,122 @@
+# WinDbg Compact Run Script (Today)
+# Paste in blocks, top to bottom.
+
+# -----------------------------------------------------------------------------
+# 1) Setup + symbols + clean slate
+# -----------------------------------------------------------------------------
+.symfix
+.sympath+ srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+.reload /f
+bc *
+.logopen /t c:\tmp\Prometheus-XIM\examples\captures\raw\today_run.log
+
+# -----------------------------------------------------------------------------
+# 2) Verify symbol target exists
+# -----------------------------------------------------------------------------
+lm m *Bluetooth*
+x Windows_Devices_Bluetooth!*WriteValueInternal*
+x *!*WriteValueInternal*
+
+# If exact symbol does not resolve, use wildcard breakpoint matching:
+# bm Windows_Devices_Bluetooth!*WriteValueInternal*
+
+# -----------------------------------------------------------------------------
+# 3) Global CFG1D listener (low-noise)
+# -----------------------------------------------------------------------------
+# Preferred exact-symbol form (works when symbol resolves exactly):
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .printf \"[CFG1D] mode=%02x rate=%02x comp=%02x\\n\", by(poi(@rdx+0x50)+0x5E), by(poi(@rdx+0x50)+0x5F), by(poi(@rdx+0x50)+0x6D); db poi(@rdx+0x50) L64; } } }; gc"
+
+# Firmware-variant form (accept subtype 0x1D or 0x00) with parser-safe nesting:
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .printf \"[CFG1D_VAR] subtype=%02x\\n\", by(poi(@rdx+0x50)+0x1); db poi(@rdx+0x50) L64; } .else { .if (by(poi(@rdx+0x50)+0x1)==0x00) { .printf \"[CFG1D_VAR] subtype=%02x\\n\", by(poi(@rdx+0x50)+0x1); db poi(@rdx+0x50) L64; } } } }; gc"
+
+# Fallback wildcard form (use this if bu above fails with resolve error):
+bm Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .printf \"[CFG1D] mode=%02x rate=%02x comp=%02x\\n\", by(poi(@rdx+0x50)+0x5E), by(poi(@rdx+0x50)+0x5F), by(poi(@rdx+0x50)+0x6D); db poi(@rdx+0x50) L64; } } }; gc"
+
+# Start capture
+bl
+g
+
+# -----------------------------------------------------------------------------
+# 4) Optional mode-specific listener (USE ONE AT A TIME)
+# -----------------------------------------------------------------------------
+# Run: bc *  before selecting any single mode listener below.
+
+# Xbox mode (0x5E==0x01)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x01) { .echo [MODE XBOX]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# PS5 mode (0x5E==0x02)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x02) { .echo [MODE PS5]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# XInput mode (0x5E==0x03)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x03) { .echo [MODE XINPUT]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# MnK mode (0x5E==0x04)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x04) { .echo [MODE MNK]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# Hybrid mode (0x5E==0x05)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5E)==0x05) { .echo [MODE HYBRID]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# -----------------------------------------------------------------------------
+# 5) Optional rate-specific listener (USE ONE AT A TIME)
+# -----------------------------------------------------------------------------
+# Run: bc *  before selecting any single rate listener below.
+
+# Standard (0x5F==0x00)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x00) { .echo [RATE STANDARD]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 250Hz (0x5F==0x01)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x01) { .echo [RATE 250]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 500Hz (0x5F==0x02)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x02) { .echo [RATE 500]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# 1000Hz (0x5F==0x03)
+bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".if (dwo(@rdx+0x58)==0x64) { .if (by(poi(@rdx+0x50))==0x15) { .if (by(poi(@rdx+0x50)+0x1)==0x1D) { .if (by(poi(@rdx+0x50)+0x5F)==0x03) { .echo [RATE 1000]; db poi(@rdx+0x50) L64; } } } }; gc"
+
+# -----------------------------------------------------------------------------
+# 6) End of run
+# -----------------------------------------------------------------------------
+bl
+.bpcmds
+.logclose
+bc *
+
+# -----------------------------------------------------------------------------
+# Troubleshooting (symbol resolve errors)
+# -----------------------------------------------------------------------------
+# 1) Force symbol refresh:
+#    .reload /u *
+#    .reload /f
+# 2) Discover callable candidates again:
+#    x Windows_Devices_Bluetooth!*WriteValueInternal*
+#    x *!*WriteValueInternal*
+# 3) If still unresolved, set a plain wildcard breakpoint first and inspect hits:
+#    bm *!*WriteValueInternal*
+#    g
+
+# -----------------------------------------------------------------------------
+# 8) Probe mode (when actions show no packet dump)
+# -----------------------------------------------------------------------------
+# Use this to confirm whether writes are happening and what lengths/types appear.
+# It intentionally removes CFG1D filters.
+
+# Step A: clear old breakpoints
+#   bc *
+
+# Step B: characteristic raw probe
+#   bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic::WriteValueInternal" ".echo [CHAR HIT]; ? @$tid; ? dwo(@rdx+0x58); db poi(@rdx+0x50) L32; gc"
+
+# Step C: descriptor raw probe (some UI actions route here)
+#   bp @!"Windows_Devices_Bluetooth!Windows::Devices::Bluetooth::GenericAttributeProfile::GattDescriptor::WriteValueInternal" ".echo [DESC HIT]; ? @$tid; ? dwo(@rdx+0x58); db poi(@rdx+0x50) L32; gc"
+
+# Step D: run and perform one UI action
+#   bl
+#   g
+
+# If probe hits appear but no CFG1D, your action likely emits non-CFG1D traffic.
+# Capture probe output first, then filter by observed length/type bytes.
+
+
+
+
+

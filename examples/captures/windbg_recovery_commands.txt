@@ -1,0 +1,90 @@
+# WinDbg Recovery Commands (Prometheus-XIM)
+# Purpose: Rebuild symbols/modules + breakpoints quickly after session loss.
+# Usage: Paste sections into WinDbg command window.
+
+# -----------------------------------------------------------------------------
+# SECTION 1 - Symbol path + force reload
+# -----------------------------------------------------------------------------
+.symfix
+.sympath+ srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+.reload /f
+
+# Optional: Reload only likely Bluetooth-related modules if needed
+.reload /f Windows_Devices_Bluetooth*
+.reload /f Bluetooth*
+
+# -----------------------------------------------------------------------------
+# SECTION 2 - Verify module/symbol availability
+# -----------------------------------------------------------------------------
+lm m *Bluetooth*
+x Windows_Devices_Bluetooth!*WriteValueInternal*
+
+# If symbol lookup fails, keep wildcard search broad:
+# x *!*WriteValueInternal*
+
+# -----------------------------------------------------------------------------
+# SECTION 3 - Recreate primary breakpoint
+# -----------------------------------------------------------------------------
+# Preferred symbolic breakpoint:
+bu Windows_Devices_Bluetooth!GattCharacteristic::WriteValueInternal
+
+# Optional fallback absolute breakpoint (build-dependent; verify each session):
+# bp 0x00007fffe8ad08fc
+
+# List breakpoints to confirm:
+bl
+
+# -----------------------------------------------------------------------------
+# SECTION 4 - Logging (durable capture)
+# -----------------------------------------------------------------------------
+.logopen /t c:\tmp\Prometheus-XIM\examples\captures\raw\windbg_session.log
+
+# Continue execution:
+g
+
+# -----------------------------------------------------------------------------
+# SECTION 5 - On breakpoint hit: capture packet context
+# -----------------------------------------------------------------------------
+r rdx
+? poi(@rdx+0x50)
+? @rdx+0x58
+dd @rdx+0x58 L1
+db poi(@rdx+0x50) L100
+
+# Optional quick type/subtype check only:
+db poi(@rdx) L2
+
+# Continue after dump:
+g
+
+# -----------------------------------------------------------------------------
+# SECTION 6 - Save/restore breakpoint definitions
+# -----------------------------------------------------------------------------
+# Show commands that recreate all current breakpoints (copy this output to file):
+.bpcmds
+
+# Remove all breakpoints before rebuilding (if needed):
+bc *
+
+# Re-run saved breakpoint commands manually from your note/log.
+
+# -----------------------------------------------------------------------------
+# SECTION 7 - Session close
+# -----------------------------------------------------------------------------
+.logclose
+
+# -----------------------------------------------------------------------------
+# TROUBLESHOOTING QUICK COMMANDS
+# -----------------------------------------------------------------------------
+# If symbols seem stale:
+.reload /u *
+.reload /f
+
+# If module not loaded yet, run then break later:
+g
+
+# If expression read fails, verify pointer/register state:
+r
+
+
+

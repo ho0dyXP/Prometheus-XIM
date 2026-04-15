@@ -1,0 +1,738 @@
+# XIM MATRIX Feature Mapping Checklist
+# Comprehensive inventory of all configurable settings to map via WinDbg
+# Based on public XIM MATRIX User Guide structure
+# Status: 70+ features documented; 5 mapped, 56 pending investigation
+
+section_status:
+  completely_mapped: 5
+  partially_mapped: 9
+  unmapped: 56
+  completion_percentage: 8.6
+
+# ============================================================================
+# PRIORITY LEGEND
+# ============================================================================
+# ✓ = Mapped and verified
+# ◐ = Partially mapped
+# ○ = Not yet started
+# ⚠ = Pending (requires special conditions)
+# Legend Meanings:
+#   Critical   = Required for baseline gaming functionality
+#   High       = Important for competitive advantage
+#   Medium     = Convenience/optimization features
+#   Low        = Quality-of-life/advanced features
+
+# ============================================================================
+# SECTION 1: DASHBOARD & IDENTITY
+# ============================================================================
+dashboard_identity:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Configuration Naming"
+      description: "Custom profile/config names"
+      priority: "Low"
+      packet_type: "Unknown"
+      status: "○"
+      notes: "UI-only text field, may not send to device"
+    
+    - name: "Game Title Field"
+      description: "Associated game for profile"
+      priority: "Low"
+      packet_type: "Unknown"
+      status: "○"
+      notes: "Metadata field"
+
+# ============================================================================
+# SECTION 2: GAME SETTINGS ✓ (CRITICAL - Mostly Complete)
+# ============================================================================
+game_settings:
+  status: "◐"
+  completion: 40
+  items:
+    - name: "Output Device Selection"
+      description: "Choose target platform (Xbox/PS5/PC)"
+      priority: "Critical"
+      packet_type: "0x15 (CFG1D subtype 0x1D)"
+      status: "✓"
+      tested: true
+      offset: "0x5E"
+      values_found: 5
+      notes: "Input mode selector; all 5 modes verified"
+      capture_notes: "Change device mode in app, capture 0x15 packet, examine offset 0x5E"
+      
+    - name: "Output Mode"
+      description: "Device type emulation"
+      status: "✓"
+      sub_items:
+        - name: "Xbox/PC Controller"
+          status: "✓"
+          byte_value: "0x01"
+          verified: true
+        - name: "PlayStation 5"
+          status: "✓"
+          byte_value: "0x02"
+          verified: true
+        - name: "PC XInput"
+          status: "✓"
+          byte_value: "0x03"
+          verified: true
+        - name: "Mouse + Keyboard"
+          status: "✓"
+          byte_value: "0x04"
+          verified: true
+          notes: "Forces rate tier 0x03 (1000Hz)"
+        - name: "Controller + Mouse & Keyboard (Hybrid)"
+          status: "✓"
+          byte_value: "0x05"
+          verified: true
+          notes: "Forces rate tier 0x03 (1000Hz)"
+    
+    - name: "Response Rate / Hz"
+      description: "Output polling frequency"
+      priority: "Critical"
+      packet_type: "0x15 (CFG1D subtype 0x1D)"
+      status: "✓"
+      tested: true
+      offset: "0x5F"
+      companion_offset: "0x6D"
+      values_found: 4
+      notes: "All 4 rates mapped with companion codes"
+      rates:
+        - name: "Standard (60ms)"
+          status: "✓"
+          byte_5f: "0x00"
+          byte_6d: "0x97"
+          verified: true
+        - name: "250Hz"
+          status: "✓"
+          byte_5f: "0x01"
+          byte_6d: "0xE8"
+          verified: true
+        - name: "500Hz"
+          status: "✓"
+          byte_5f: "0x02"
+          byte_6d: "0x23"
+          verified: true
+        - name: "1000Hz"
+          status: "✓"
+          byte_5f: "0x03"
+          byte_6d: "0xF3"
+          verified: true
+    
+    - name: "Translators / Smart Translator Settings"
+      description: "Device type translation profiles"
+      priority: "High"
+      packet_type: "0x15 (variant unknown)"
+      status: "○"
+      notes: "May be codec-specific; requires capture during translator selection"
+      capture_notes: "Change translator in app settings, capture 0x15 packets, look for new byte values"
+    
+    - name: "Game Roles"
+      description: "Primary/secondary/melee role assignments"
+      priority: "Medium"
+      packet_type: "0x15 (variant unknown)"
+      status: "○"
+      notes: "Appears to be configuration container for role-specific bindings"
+      capture_notes: "Switch between game roles, compare captured configurations"
+
+# ============================================================================
+# SECTION 3: AIM SETTINGS ◐ (HIGH PRIORITY - Partially Complete)
+# ============================================================================
+aim_settings:
+  status: "◐"
+  completion: 30
+  items:
+    - name: "Aim Curve Presets"
+      description: "Pre-configured aim response curves (separate selectors for Hip and ADS)"
+      priority: "High"
+      packet_type: "0x15 (curve-specific variant)"
+      status: "◐"
+      tested: true
+      offset: "Variant-dependent (signature/payload region observed around 0x40+ in ADS subtype 0x00 len=0x64 captures)"
+      presets_found: 4
+      capture_notes: "Capture Hip and ADS independently: for each section select presets 1-4 and record variant/signature bytes and any extended point payload. Use UI preset index left->right to avoid naming ambiguity from icon shape differences."
+      notes: "Clean no-restart sweep (Hip 1->4, then ADS 1->4) showed consistent preset family order in both contexts: Preset1=`88 13 88 13`, Preset2=`06 0D 00 00`, Preset3=`49 25 1B 0A ...` (extended), Preset4=`3F 12 54 06 ...` (extended). Extended families may emit companion packets carrying continuation data."
+      sub_items:
+        - name: "Preset 1"
+          status: "✓"
+          signature: "[0x88, 0x13, 0x88, 0x13]"
+          verified: true
+        - name: "Preset 2"
+          status: "✓"
+          signature: "[0x06, 0x0D, 0x00, 0x00]"
+          verified: true
+        - name: "Preset 3"
+          status: "✓"
+          signature: "[0x49, 0x25, 0x1B, 0x0A, ...]"
+          verified: true
+          notes: "Extended payload family; often followed by continuation/companion packet depending on context and save timing."
+        - name: "Preset 4"
+          status: "✓"
+          signature: "[0x3F, 0x12, 0x54, 0x06, ...]"
+          verified: true
+          notes: "Rightmost preset button (last preset) in UI; extended payload family and can emit continuation companion packet."
+        - name: "Custom Curve"
+          status: "⚠"
+          description: "Point-based encoding detected; full algorithm pending"
+          blocked_by: "Incomplete algorithm reverse-engineering"
+          priority: "Phase 3"
+          notes: "Mode selection likely toggles behavior flag bytes in subtype 0x00 packets (observed @0x38: native=0x00, custom=0x01; separate hip-path toggle observed @0x4E). Control-point encoding still unknown. Validate whether Hip and ADS custom curves are separate payload regions or shared schema with context selector."
+    
+    - name: "Curve Editor / Custom Curve Points"
+      description: "Manual curve point adjustment"
+      priority: "High"
+      packet_type: "0x15 (curve variant, extended data)"
+      status: "⚠"
+      notes: "Partial data observed; appears to use extended payload structure. ADS custom drag run (from Preset1 baseline) changed candidate control bytes at 0x42/0x43, 0x46/0x47, and occasionally 0x3E/0x3F while sensitivity bytes remained fixed; 0x2710 behaves like 100.0 in curve domain. Additional ADS Tool1 test from Preset4 (drag top-right point to x=1.000,y=0.000) changed subtype-0x08 front table bytes at 0x12/0x13 and 0x16/0x17 to 0x0000 while 0x14/0x15 remained 0x2710, supporting coordinate tuple encoding in the 0x0C+ table. ADS Tool1 bottom-left drag-across test showed apparent UI saturation/clamp (point stopped mid) with controlled tuple update (`3f 12 54 06 -> 3f 12 0e 02`) and movement-state change (`0x0000 -> 0x004F`). ADS Tool1 second-point left-drag test rewrote a localized early/mid tuple segment while keeping downstream tuples stable, supporting neighborhood-local coordinate updates. ADS Tool2 square-segment edit from Preset4 changed extended tuple bytes from `57 13 69 09 7A 13` to `20 13 10 27 7A 13`, indicating selected pair rewrite with y pushed to max. ADS Tool3 (linearize) run from Preset4 preserved early tuple region but rewrote late tuple fields near `...64 14 6B 14 ...`, including forcing multiple paired values to `0x0000` in stronger linearized state. ADS Tool4 run (remove-handle mode, rightward drag) preserved sensitivity and early tuples while progressively rewriting late tuple fields with occasional paired zeroing. Hip Tool1 mirrors now include endpoint up-drag, interior constrained motion, baseline-left rewrite, and clean right-permissive confirmation. Hip Tool2 H-T2-W01 captured under right-wall constraint still produced the expected local square-shaping rewrite in the companion tuple region (`...6B14 FA14 9915 001D...` -> `...6B14 001D 9615 001D...`). Hip Tool3 candidate H-T3-W01 captured from Preset4 with right-wall/down/top path: tuple family stayed stable, late tuple region rewrote through a temporary degenerate state (`...7A13 0000 ...`) and reached max-bound values (`0x2710`) in final state; confidence marked mixed-action due to multi-step movement in one window. Hip Tool4 now has both crash-contaminated and crash-free runs; crash-free H-T4-W02 captured explicit point deletion followed by post-delete constrained movement, confirming topology change handling within the same known tuple schema. UI tool modes are now clarified: Tool1=free handle drag, Tool2=flat/square segment shaping, Tool3=linearize selected points, Tool4=remove handles."
+      capture_notes: "For Hip then ADS: (1) switch to Custom, (2) capture untouched linear baseline, (3) choose one tool mode at a time (Tool1-Tool4), (4) apply exactly one edit, (5) capture immediately, (6) compare against baseline and preset captures to isolate point-array encoding and context-selector bytes, focusing on subtype-0x08 front table region, mid extended tuple region, and late tuple region near `...64 14 6B 14 ...`. If one-step drags are impractical, use coarse anchor moves (Y 0->100 and Y 100->0) with pre/post captures and mark run as coarse in notes."
+      expected_structure: "Point array format: [x, y] coordinates or similar"
+      tool3_followup: "H-T3-W02 repeat captured under strong horizontal constraint (slight down-angle only): companion tuple region changed locally (`...6B14 BD1C...` -> `...6B14 9F1C...`) while sensitivity bytes remained fixed; supports Tool3 region stability."
+      tool4_followup: "H-T4-W01 (crash/reconnect) established regional progression; H-T4-W02 crash-free canonical polish captured explicit point deletion and post-delete constrained movement in the same schema."
+      tool4_delete_repeat: "H-T4-W03 delete-only run (no post-delete movement) reproduced the same deletion transition pattern, confirming deletion offsets are stable and not movement-dependent. Attempting multi-delete in one pass appeared UI-state constrained."
+      tool2_followup: "H-T2-W01 captured with wall constraint and slight rightward progress; companion tuple rewrite matched expected Tool2 local square-shaping neighborhood. Optional H-T2-W02 clean unconstrained pass only if strict canonical geometry trace is needed."
+      tool1_followup: "H-T1-W03 showed left progression with right block at one point; H-T1-W04 clean right-permissive confirmation captured expected same-region companion rewrite (`...6B14 FA14 9915 001D...` -> `...6B14 001D E212 001D...`), confirming dual-direction capability is point-local geometry constrained, not protocol-constrained."
+      next_action: "Required Hip custom-curve evidence set is complete, including Tool1 dual-direction confirmation. Close Hip curve schema mapping and consolidate final shared-schema notes for transition to next capture phase."
+    
+    - name: "Hip Sensitivity"
+      description: "X/Y sensitivity multiplier for hip-fire"
+      priority: "High"
+      packet_type: "0x15 (subtype 0x00 observed in current firmware path, len=0x64)"
+      status: "✓"
+      notes: "Confirmed Hip mapping: X axis @0x4A, Y axis @0x4C (unlock test verified independent movement). Encoding is uint16 little-endian fixed-point: value = display*10 (e.g., 73.0->0x02DA, 74.0->0x02E4). Boundary sweeps confirm both Hip axes clamp at 0.0 -> 100.0 (0x0000 -> 0x03E8). Hip X decimal sweep 73.0->73.9 serialized as 0x02DA->0x02E3 and Hip Y decimal sweep 100.0->99.1 serialized as 0x03E8->0x03DF (+/-0x0001 per 0.1). Offset 0x02 appears sequence-like; 0x04-0x07 appear volatile integrity/session fields."
+      capture_notes: "Use subtype 0x00, len 0x64 packet path. Track 0x4A/0x4C as semantic value bytes and exclude 0x02 and 0x04-0x07 from semantic diffs. +1.0 UI step = +0x000A."
+      expected_range: "0.1x to 10x multiplier"
+      next_action: "Mapped for current firmware path; optional spot-check at nontrivial decimals (e.g., 12.3, 57.8)"
+    
+    - name: "ADS Sensitivity"
+      description: "X/Y sensitivity multiplier for aim-down-sights"
+      priority: "High"
+      packet_type: "0x15 (subtype 0x00 observed in current firmware path, len=0x64)"
+      status: "✓"
+      notes: "Confirmed ADS mapping: X axis @0x34, Y axis @0x36 (unlock test verified independent movement). Encoding matches Hip: uint16 little-endian fixed-point value = display*10 (e.g., 41.0->0x019A, 42.0->0x01A4). ADS clamps confirmed on both axes at 0.0 -> 100.0 (0x0000 -> 0x03E8). ADS X decimal sweep 1.0->1.9 serialized as 0x000A->0x0013 and ADS Y decimal sweep 0.0->0.9 serialized as 0x0000->0x0009 (+0x0001 per 0.1). Offset 0x38 toggles with behavior mode (native=0x00, custom=0x01)."
+      capture_notes: "Use subtype 0x00, len 0x64 packet path. Treat 0x02 and 0x04-0x07 as volatile sequence/integrity fields and exclude from semantic diffing. +1.0 UI step = +0x000A."
+      expected_range: "0.1x to 10x multiplier"
+      next_action: "Mapped for current firmware path; optional spot-check at nontrivial decimals (e.g., 12.3, 57.8)"
+      activation_delay_followup: "Closed by explicit isolated ADS-page windows: Activate-only 0->2->0 and Deactivate-only 0->2->0. Activate delay is metadata-family tail uint16 at 0x62/0x63 (`... 02 00 01 00 -> 02 00 02 00 -> 02 00 01 00 -> 02 00 00 00`), and Deactivate delay is control-family uint32 at 0x0C..0x0F (`0x00000001 -> 0x00000002 -> 0x00000001 -> 0x00000000`). Prior marker typo caveat is retired."
+    
+    - name: "Velocity Calibration"
+      description: "Per-axis mouse velocity calibration data"
+      priority: "Medium"
+      packet_type: "0x15 (subtype 0x08 observed, calibration-specific)"
+      status: "⚠"
+      tested: false
+      blocked_by: "Requires hardware source (mouse/controller) connected"
+      notes: "Packets only sent when input device actively connected; impossible without hardware"
+      capture_notes: "Connect mouse or controller to PC, trigger velocity calibration in XIM Manager, capture 0x15 packets"
+      sub_items:
+        - name: "Calibration X Axis"
+          status: "⚠"
+          priority: "Medium"
+          blocked_by: "Hardware requirement"
+        - name: "Calibration Y Axis"
+          status: "⚠"
+          priority: "Medium"
+          blocked_by: "Hardware requirement"
+        - name: "Hip Calibration State"
+          status: "⚠"
+          priority: "Low"
+        - name: "ADS Calibration State"
+          status: "⚠"
+          priority: "Low"
+        - name: "Calibration Reset"
+          status: "⚠"
+          priority: "Low"
+
+# ============================================================================
+# SECTION 4: INPUT MODIFIERS & ANALOG BEHAVIOR
+# ============================================================================
+input_modifiers:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Analog Stick Simulation"
+      description: "Emulate analog behavior from digital inputs"
+      priority: "High"
+      packet_type: "Unknown"
+      status: "○"
+      capture_notes: "Adjust analog simulation settings, capture 0x15 packets, look for new parameters"
+      sub_items:
+        - name: "Dead Zone"
+          priority: "High"
+          status: "○"
+          expected_format: "Likely percentage (0-100) or raw threshold"
+        - name: "Acceleration Curve"
+          priority: "High"
+          status: "○"
+          expected_format: "Curve ID or point-based like aim curves"
+        - name: "Trigger Saturation"
+          priority: "Medium"
+          status: "○"
+          expected_format: "Percentage or raw threshold"
+    
+    - name: "Input Source Assignment"
+      description: "Map which physical device controls which output"
+      priority: "Critical"
+      packet_type: "Unknown"
+      status: "○"
+      notes: "Determines which device inputs map to game controller"
+      capture_notes: "Switch between different input source combinations, capture packets, identify selection flags"
+      sub_items:
+        - name: "Mouse Source for Aim"
+          priority: "Critical"
+          status: "○"
+          notes: "Captures show toggle behavior"
+        - name: "Keyboard Source"
+          priority: "High"
+          status: "○"
+        - name: "Controller Source"
+          priority: "High"
+          status: "○"
+    
+    - name: "Input Modifiers (Holdable/Toggle)"
+      description: "Conditional input modifications"
+      priority: "High"
+      packet_type: "Unknown (likely Smart Actions)"
+      status: "○"
+      notes: "May be mapped as Smart Actions rather than separate packet type"
+      capture_notes: "Create holdable/toggle modifiers, capture setup packets"
+    
+    - name: "Gyro Settings"
+      description: "Gyroscope input controls (PS5/Switch)"
+      priority: "Medium"
+      packet_type: "Unknown"
+      status: "○"
+      capture_notes: "Change gyro settings on PS5 device, capture 0x15 packets"
+      sub_items:
+        - name: "Gyro Enable/Disable"
+          priority: "Medium"
+          status: "○"
+        - name: "Gyro Sensitivity"
+          priority: "Medium"
+          status: "○"
+        - name: "Gyro Drifting Correction"
+          priority: "Low"
+          status: "○"
+
+# ============================================================================
+# SECTION 5: SMART ACTIONS (MACROS & ADVANCED) ◐
+# ============================================================================
+smart_actions:
+  status: "◐"
+  completion: 25
+  items:
+    - name: "Smart Actions Master Enable/Disable"
+      description: "Turn all macros on/off globally"
+      priority: "High"
+      packet_type: "Unknown"
+      status: "○"
+      notes: "Distinct from individual action enablement"
+      capture_notes: "Toggle Master Smart Actions on/off, capture 0x15 packets"
+    
+    - name: "Smart Action Modes"
+      description: "Conditional activation of macros (Hip/ADS/Both)"
+      priority: "High"
+      packet_type: "0x15 (mode-specific variant)"
+      status: "✓"
+      tested: true
+      offset: "0x4F"
+      values_found: 4
+      notes: "All 4 activation modes verified"
+      modes:
+        - name: "Active"
+          status: "✓"
+          byte_value: "0xC0"
+          description: "Macros always active"
+          verified: true
+        - name: "Hip Only"
+          status: "✓"
+          byte_value: "0xD0"
+          description: "Macros active only in hip-fire"
+          verified: true
+        - name: "ADS Only"
+          status: "✓"
+          byte_value: "0xE0"
+          description: "Macros active only in aim-down-sights"
+          verified: true
+        - name: "Inactive"
+          status: "✓"
+          byte_value: "0xF0"
+          description: "Macros disabled"
+          verified: true
+    
+    - name: "Individual Smart Actions"
+      description: "Specific macro definitions and parameters"
+      priority: "High"
+      packet_type: "0x15 (variant, potentially variable length)"
+      status: "○"
+      notes: "Likely payload-based; may require parsing extended action data"
+      capture_notes: "Create each action type below, capture 0x15 packets individually"
+      sub_items:
+        - name: "Auto Fire Setup"
+          priority: "High"
+          status: "○"
+          expected_fields: "Fire rate, burst count, delay"
+          capture_technique: "Create single auto-fire action, capture; then modify fire rate and recapture"
+        
+        - name: "Recoil Control Setup"
+          priority: "High"
+          status: "○"
+          expected_fields: "Recoil pattern, compensation amount, timing"
+          capture_technique: "Define recoil control action with different patterns"
+        
+        - name: "Weapon Loadout Switching"
+          priority: "Medium"
+          status: "○"
+          expected_fields: "Loadout index, button sequence"
+          capture_technique: "Create loadout switch macro, capture execution packets"
+        
+        - name: "Vehicle Controls"
+          priority: "Medium"
+          status: "○"
+          expected_fields: "Vehicle input sequence"
+        
+        - name: "Parachute Controls"
+          priority: "Low"
+          status: "○"
+          expected_fields: "Deployment input sequence"
+        
+        - name: "Radial Menu Binding"
+          priority: "Medium"
+          status: "○"
+          expected_fields: "Menu selection index, confirm action"
+        
+        - name: "Custom WASD Mapping"
+          priority: "Medium"
+          status: "○"
+          expected_fields: "Custom key mapping array"
+        
+        - name: "Rumble / Haptic Triggers"
+          priority: "Low"
+          status: "○"
+          expected_fields: "Rumble intensity, pattern, timing"
+
+# ============================================================================
+# SECTION 6: BINDING & KEY MAPPING
+# ============================================================================
+bindings:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Button Bindings (Re-mapping)"
+      description: "Reassign controller buttons to different outputs"
+      priority: "High"
+      packet_type: "Unknown (likely 0x15 variant)"
+      status: "○"
+      notes: "Critical for custom control schemes"
+      capture_notes: "Create custom button mapping, capture 0x15 packets"
+      example_mapping: "Swap X and Y buttons"
+    
+    - name: "Trigger Analog Tuning"
+      description: "L2/R2 trigger sensitivity and saturation"
+      priority: "High"
+      packet_type: "Unknown"
+      status: "○"
+      capture_notes: "Adjust trigger sensitivity, capture packets"
+    
+    - name: "Stick Binding"
+      description: "Analog stick axis mapping and sensitivity"
+      priority: "High"
+      packet_type: "Unknown"
+      status: "○"
+      capture_notes: "Create custom stick binding, capture"
+    
+    - name: "D-Pad Binding"
+      description: "D-pad directional mapping"
+      priority: "Medium"
+      packet_type: "Unknown"
+      status: "○"
+    
+    - name: "Navigate Mode"
+      description: "UI navigation controls and mappings"
+      priority: "Low"
+      packet_type: "Unknown"
+      status: "○"
+
+# ============================================================================
+# SECTION 7: GLOBAL SETTINGS
+# ============================================================================
+global_settings:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Wireless Health / Signal Strength"
+      description: "Bluetooth connection quality monitoring"
+      priority: "Low"
+      packet_type: "Likely read-only status"
+      status: "○"
+      notes: "Informational; may not be writable"
+    
+    - name: "Firmware Version"
+      description: "Device firmware version info"
+      priority: "Low"
+      packet_type: "Likely read-only"
+      status: "○"
+      notes: "Status only; not user-configurable"
+    
+    - name: "Device Name / Identifier"
+      description: "Rename XIM MATRIX device"
+      priority: "Low"
+      packet_type: "Unknown"
+      status: "○"
+    
+    - name: "Pairing / Wireless Gamepad Pairing"
+      description: "Pair secondary wireless controllers"
+      priority: "Medium"
+      packet_type: "Unknown (likely BLE pairing commands)"
+      status: "○"
+      notes: "May use standard Bluetooth pairing rather than custom packets"
+    
+    - name: "Firmware Update Check"
+      description: "Check for available firmware updates"
+      priority: "Low"
+      packet_type: "Likely HTTP/cloud-based"
+      status: "○"
+      notes: "Out of scope for Bluetooth protocol mapping"
+
+# ============================================================================
+# SECTION 8: CONFIGURATION MANAGEMENT
+# ============================================================================
+config_management:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Save Configuration"
+      description: "Store named profile locally or to device"
+      priority: "Medium"
+      packet_type: "Local storage or 0x15 variant"
+      status: "○"
+      notes: "May not send to device; primarily local app feature"
+    
+    - name: "Load Configuration"
+      description: "Activate stored profile"
+      priority: "Medium"
+      packet_type: "Likely full-stack 0x15 packets"
+      status: "◐"
+      notes: "Partial mapping closed for current hook scope: Smart Action authoring path repeatedly produced subtype 0x05 variable-length bursts when adding adjacent-config switch action (list chunks 0x11..0x15 and recurring record chunks 0x10), including repeated-entry serialization and tuple permutations across retries. Runtime activation produced no visible app write burst in this interception path for both controller-triggered HUD switch and manual app-driven HUD switch (CFG-UI-W01). Additional constraints confirmed: runtime switch does not execute while Smart Action editor is open, and baseline reset/rebinding alone did not restore runtime switch in follow-up retry. Runtime nuance is now conditional: auto-switch on HUD entry can occur when prior switch SA state persists, but a control run (delete old SA, recreate from clean baseline) returned to HUD with no auto-switch. Navigation-mode switch path (D-pad Left + B, then Select) shows a brief device 'half-restart' side effect where authentication controller power briefly drops and re-enumerates/vibrates, consistent with device-side activation/reinit."
+    
+    - name: "Delete Configuration"
+      description: "Remove stored profile"
+      priority: "Low"
+      packet_type: "Local storage"
+      status: "○"
+    
+    - name: "Sub-Configs"
+      description: "Role-specific configuration variants"
+      priority: "Medium"
+      packet_type: "0x15 (grouped payload)"
+      status: "○"
+      notes: "Containers for role-specific bindings and actions"
+      capture_notes: "Switch between sub-configs, capture packets"
+    
+    - name: "Config Sync to Cloud"
+      description: "Upload config to XIM Config Cloud"
+      priority: "Low"
+      packet_type: "HTTP API (not BLE)"
+      status: "○"
+      notes: "Out of scope for Bluetooth protocol mapping"
+
+# ============================================================================
+# SECTION 9: ADVANCED / RECOIL MODELING
+# ============================================================================
+advanced_recoil:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Recoil Control Setup"
+      description: "Per-weapon recoil compensation"
+      priority: "Medium"
+      packet_type: "0x15 (extended Smart Actions variant)"
+      status: "○"
+      notes: "Likely bundled with Smart Actions action definitions"
+    
+    - name: "Recoil Modeling"
+      description: "Mathematical recoil pattern definition"
+      priority: "Medium"
+      packet_type: "Unknown (possibly 0x15 extended)"
+      status: "○"
+      capture_notes: "Create weapon-specific recoil pattern, capture 0x15 packets"
+      sub_items:
+        - name: "Horizontal Recoil Curve"
+          priority: "Medium"
+          status: "○"
+        - name: "Vertical Recoil Curve"
+          priority: "Medium"
+          status: "○"
+        - name: "Recoil Timing"
+          priority: "Low"
+          status: "○"
+
+# ============================================================================
+# SECTION 10: DEVICE CONNECTION & DIAGNOSTICS
+# ============================================================================
+device_connection:
+  status: "○"
+  completion: 0
+  items:
+    - name: "Device Connection Status"
+      description: "Connected/disconnected state indicator"
+      priority: "Low"
+      packet_type: "Status/read-only from device"
+      status: "○"
+      notes: "Informational; bidirectional BLE handshake"
+    
+    - name: "Trace Log / Debug"
+      description: "Capture device communication logs"
+      priority: "Low"
+      packet_type: "Debug interface"
+      status: "○"
+      notes: "Diagnostic feature; not user-facing control"
+    
+    - name: "Warning Lights Status"
+      description: "Device LED status indicators"
+      priority: "Low"
+      packet_type: "Status indicator"
+      status: "○"
+      notes: "Read-only status reporting"
+
+# ============================================================================
+# RECOMMENDED MAPPING SEQUENCE
+# ============================================================================
+
+recommended_capture_sequence:
+  phase_1_critical:
+    status: "✓ COMPLETE"
+    items:
+      - "✓ Output Mode Selection"
+      - "✓ Response Rate / Hz"
+      - "✓ Smart Action Modes (Hip/ADS/Active/Inactive)"
+      - "✓ Aim Curve Presets (4/4 mapped)"
+    estimated_time: "2-3 hours"
+    difficulty: "Low - straightforward single-value captures"
+    impact: "Enables baseline mode/rate control"
+    
+  phase_2_high_priority:
+    status: "○ NOT STARTED"
+    items:
+      - "Input Source Selection (Mouse/Controller/Keyboard)"
+      - "Hip Sensitivity (X, Y independent)"
+      - "ADS Sensitivity (X, Y independent)"
+      - "Button Bindings (Basic mapping structure)"
+      - "Smart Actions (Auto-Fire, Recoil)"
+      - "Translator Settings"
+    estimated_time: "4-6 hours"
+    difficulty: "Medium - may require binary search for offsets"
+    impact: "Enables full control over sensitivity and basic macros"
+    technique: "Capture before/after for each setting change"
+    
+  phase_3_medium_priority:
+    status: "○ BLOCKED/PENDING"
+    items:
+      - "Velocity Calibration (BLOCKED - requires hardware)"
+      - "Custom Curve Editor (point encoding algorithm)"
+      - "Analog Stick Simulation (Dead zone, acceleration)"
+      - "Trigger Tuning"
+      - "Gyro Settings"
+      - "Game Roles Container"
+    estimated_time: "3-5 hours (if hardware available)"
+    difficulty: "Hard - requires advanced reverse-engineering"
+    blockers:
+      - "Hardware source required for velocity calibration"
+      - "Point encoding algorithm not yet discovered"
+    
+  phase_4_nice_to_have:
+    status: "○ LOW PRIORITY"
+    items:
+      - "Wireless Gamepad Pairing"
+      - "Sub-Config Management"
+      - "Advanced Recoil Modeling"
+      - "Radial Menu / Custom WASD"
+      - "Config Cloud Sync"
+    estimated_time: "2-3 hours"
+    difficulty: "Variable"
+    impact: "Quality-of-life improvements"
+
+# ============================================================================
+# WINDBG CAPTURE NOTES FOR NEXT SESSION
+# ============================================================================
+
+capture_strategy:
+  general_guidelines:
+    - "Use refined CFG1D filter: type=0x15, len=0x64, subtype@+0x08=0x1D"
+    - "Capture BEFORE and AFTER for each setting change"
+    - "Log sequence numbers to verify packet ordering"
+    - "Save full packet dumps (L0x64) for cross-reference"
+    - "Use breakpoint logging to capture multiple packets automatically"
+    - "Compare hex diffs between baseline and modified configs"
+    
+  sensitivity_discovery:
+    steps:
+      - "Set Hip Sensitivity X to minimum value (0.1x), capture baseline"
+      - "Set Hip Sensitivity X to maximum value (10x), capture modified"
+      - "Binary scan: Set to 5x, capture; continue halving/doubling to narrow byte location"
+      - "Record offset and confirm encoding by testing intermediate values"
+      - "Repeat for Hip Y, ADS X, ADS Y"
+    expected_location: "Unknown offset, likely 0x60-0x75 range"
+    expected_format: "IEEE 754 float (4 bytes) or 16-bit integer with multiplier"
+    
+  smart_actions_discovery:
+    steps:
+      - "Create single Smart Action (Auto Fire), capture packet"
+      - "Modify fire rate parameter by known amount, recapture"
+      - "Compare packets to identify parameter field location"
+      - "Test each action type (Recoil, Loadout, Vehicle, etc.) individually"
+      - "Look for variable-length payload structure if not fixed 100 bytes"
+    expected_structure: "Likely variable-length 0x15 variant with action ID + parameters"
+    
+  button_remapping_discovery:
+    steps:
+      - "Create basic button binding (swap X and Y), capture"
+      - "Create different binding, capture and compare"
+      - "Attempt to identify button code mapping"
+      - "Look for array or flags indicating remapped buttons"
+    expected_location: "Unknown offset in 0x15 payload"
+    followup_note: "RT baseline remap tests confirm a shared selector-plus-parameter schema near 0x4F/0x52. Aim Angle at 0x1E/0x1F (uint16 LE) is confirmed: encoded_angle = 50000 + angle_tenths (0.0->0xC350, 90.0->0xC6D4, 180.0->0xCA58, max-end->0xD15F), where angle is circumferential degrees around the stick circle. Magnitude in the same slot is now also confirmed from clean rerun anchors: encoded_magnitude = 45000 + magnitude_tenths (0.0->0xAFC8, 10.0->0xB02C, 185.0->0xB702, high-end sample near expected max), where magnitude is angular speed output (deg/s). Config-switch Smart Action introduced subtype 0x05 variable-length authoring burst (chunk prefixes 0x11..0x15); runtime controller-triggered switch may be device-side and invisible to this app write hook. Observed 0x1B transitions (0x02 and 0x06) may include transient edit-state behavior; do not treat 0x1B alone as the final action discriminator yet."
+    
+  input_source_discovery:
+    steps:
+      - "Cycle through: Mouse only → Controller only → Keyboard only"
+      - "Capture packet for each combination"
+      - "Look for 3-bit flags or selection byte"
+    expected_location: "Likely near input mode @ +0x5E"
+    
+  curve_custom_discovery:
+    steps:
+      - "Create custom curve with 2 control points at (0,0) and (100,100), capture"
+      - "Move first point to (0,50), capture - identify point encoding"
+      - "Add third point, capture and identify array format"
+      - "Determine coordinate system (0-255, 0-1, pixel space, etc.)"
+    expected_structure: "Array of [x,y] pairs or similar control point format"
+
+# ============================================================================
+# QUICK STATUS SUMMARY
+# ============================================================================
+
+summary:
+  total_features: 70
+  fully_mapped: 5
+  partially_mapped: 9
+  unmapped: 56
+  completion_percentage: 8.6
+  
+  mapped_categories:
+    - "Game Settings (40%): Output mode, rates, presets"
+    - "Smart Actions (25%): Activation modes only, individual actions pending"
+    - "Aim Settings (30%): Presets only, sensitivity/calibration pending"
+  
+  next_immediate_focus: "Hip/ADS Sensitivity parameters (Phase 2 critical)"
+  
+  estimated_completion:
+    phase_1: "Complete ✓"
+    phase_2: "Est. 4-6 hours capture + analysis"
+    phase_3: "Est. 3-5 hours (if hardware available)"
+    total: "10-15 hours total for full feature coverage"
+  
+  blockers:
+    - "Velocity calibration requires hardware source connection"
+    - "Custom curve algorithm incomplete"
+    - "Many packet structure unknowns require binary search technique"

@@ -1,0 +1,95 @@
+# WinDbg Window Marker Cheat Sheet (Hip Curve Mapping)
+# Purpose: add action context markers without changing packet-capture logic.
+# Use with your existing capture breakpoints and filters.
+
+# -----------------------------------------------------------------------------
+# Global pattern for each window
+# -----------------------------------------------------------------------------
+# 1) Reset baseline to Preset 4 in UI.
+# 2) Run baseline save (no movement).
+# 3) Perform one action only.
+# 4) Run action save.
+# 5) If mishap occurs, mark it and reset to Preset 4.
+
+# Optional precision annotation format for any action marker:
+#   start=<point/segment id or visual anchor>; target=<intended destination>; actual=<where it ended>
+# Example:
+#   .echo [H-T2-W01] action square edit; start=mid-handle; target=right-flat; actual=right-wall-then-slight-right
+
+# Optional per-window raw log:
+# .logopen /t c:\tmp\Prometheus-XIM\examples\captures\raw\H-T2-W01.log
+# ... run window ...
+# .logclose
+
+# -----------------------------------------------------------------------------
+# H-T2-W01 (Square edit)
+# -----------------------------------------------------------------------------
+.echo [H-T2-W01] baseline preset4 selected, Tool2 square mode, about to press Save
+g
+.echo [H-T2-W01] action square edit; start=<point>; target=<destination>; actual=<result>, about to press Save
+g
+.echo [H-T2-W01] complete
+
+# Mishap branch (only if needed)
+.echo [H-T2-W01] mishap overshoot/misclick; discard window and reset preset4
+g
+.echo [H-T2-W01] reset complete; canonical rerun starts now
+
+# -----------------------------------------------------------------------------
+# H-T3-W01 (Linearize)
+# -----------------------------------------------------------------------------
+.echo [H-T3-W01] baseline preset4 selected, Tool3 linearize mode, about to press Save
+g
+.echo [H-T3-W01] action linearize; start=<point>; target=<destination>; actual=<result>, about to press Save
+g
+.echo [H-T3-W01] complete
+
+# Mishap branch (only if needed)
+.echo [H-T3-W01] mishap wrong point/extra move; discard window and reset preset4
+g
+.echo [H-T3-W01] reset complete; canonical rerun starts now
+
+# -----------------------------------------------------------------------------
+# H-T4-W01 (Remove-handle)
+# -----------------------------------------------------------------------------
+.echo [H-T4-W01] baseline preset4 selected, Tool4 remove-handle mode, about to press Save
+g
+.echo [H-T4-W01] action remove-handle; start=<point>; target=<destination>; actual=<result>, about to press Save
+g
+.echo [H-T4-W01] complete
+
+# Mishap branch (only if needed)
+.echo [H-T4-W01] mishap unintended drag/extra click; discard window and reset preset4
+g
+.echo [H-T4-W01] reset complete; canonical rerun starts now
+
+# -----------------------------------------------------------------------------
+# H-T1-W03 (Final Tool1 dual-direction verification)
+# -----------------------------------------------------------------------------
+# Use this only for final confirmation that Tool1 supports horizontal movement.
+# Sequence:
+#   1) baseline save
+#   2) left move save
+#   3) right move save
+# Keep all three steps in the same focused run and describe start point used.
+
+.echo [H-T1-W03] baseline preset4 selected, Tool1 add-handle mode, about to press Save
+g
+.echo [H-T1-W03] action-left; start=<point>; target=<destination>; actual=<result>, about to press Save
+g
+.echo [H-T1-W03] action-right; start=<point>; target=<destination>; actual=<result>, about to press Save
+g
+.echo [H-T1-W03] complete
+
+# Mishap branch (only if needed)
+.echo [H-T1-W03] mishap extra drag/misclick; discard this run and reset preset4
+g
+.echo [H-T1-W03] reset complete; canonical rerun starts now
+
+# -----------------------------------------------------------------------------
+# Notes
+# -----------------------------------------------------------------------------
+# - Keep one action per window for clean attribution.
+# - Keep using first packet after each 'g' as the start of the action window.
+# - Primary+companion packet pairs are ideal when present.
+# - If exact UI point IDs are unknown, use stable visual anchors (e.g., top-right endpoint, second interior handle).
