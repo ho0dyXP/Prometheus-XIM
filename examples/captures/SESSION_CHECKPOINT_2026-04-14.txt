@@ -50,6 +50,7 @@ Recommended immediate next step
 1) Keep clean baseline.
 2) Perform one HUD trigger attempt.
 3) If still no write burst, stop runtime-hook attempts and continue only subtype 0x05 authoring diffs.
+4) Add a startup/shutdown baseline capture to the backlog before leaving the project.
 
 Where detailed evidence lives
 - examples/captures/2026-04-14_session-hip-sensitivity.md
@@ -64,3 +65,6 @@ Resume protocol (quick)
   g
 - Keep one variable change per window.
 - Save after each intentional authoring diff.
+
+Backlog reminder
+- Capture a clean startup and shutdown trace later (not now) so future firmware/update crashes can be compared against a known-good boot/exit baseline.

@@ -536,6 +536,9 @@ config_management:
       status: "○"
       notes: "Out of scope for Bluetooth protocol mapping"
 
+backlog_notes:
+  - "Add a clean startup/shutdown capture later for baseline comparison against future firmware/update crashes or reconnect issues."
+
 # ============================================================================
 # SECTION 9: ADVANCED / RECOIL MODELING
 # ============================================================================
